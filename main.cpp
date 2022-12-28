@@ -16,6 +16,20 @@ int getFileSize(FILE* inFile)
     return fileSize;
 }
 
+void foo(int start, int end, FILE *orig, FILE *out, long long& offset) {
+    int diff = end - start;
+    static const uint32_t FILL_SIZE = 88200 * diff;
+    int8_t fill[FILL_SIZE];
+
+    for (int8_t & cell : fill){
+        cell = 0;
+    }
+    fseek(out, offset + start, SEEK_SET);
+
+    fwrite(&fill, 1, FILL_SIZE, out);
+
+}
+
 int main(int argc, char **argv) {
     input_parser prs(argc, argv);
 
@@ -52,20 +66,23 @@ int main(int argc, char **argv) {
         int track_info_size = orig_wav_head.Subchunk2Size+8;
         char track_info[track_info_size];
         fread(&track_info, 1, track_info_size, orig_wav);
+        char data_s[4];
+        fread(&data_s, 1, 4, orig_wav);
+        int sound_data_size;
+        fread(&sound_data_size, 1, sizeof (sound_data_size), orig_wav);
+        char sound_data[sound_data_size];
+        fread(&sound_data_size, 1, sound_data_size, orig_wav);
 
         FILE* output = fopen(prs.output_wav.c_str(), "wb");
         fwrite(&orig_wav_head, 1, header_size, output);
-        fwrite(&track_info, 1, track_info_size, output);
-        fclose(output);
+        fwrite(track_info, 1, track_info_size, output);
+        fwrite(data_s, 1, sizeof (data_s), output);
+        fwrite(&sound_data_size, 1, sizeof(sound_data_size), output);
+        fwrite(sound_data, 1, sound_data_size, output);
 
-        static const uint32_t FILL_SIZE = 88200;
-        int8_t fill[FILL_SIZE];
-        for (int8_t & cell : fill){
-            cell = 0;
-        }
+        long long offset = header_size + track_info_size;
+
         for (int i = 0; i < cnt_comm; i++){
-            output = fopen(prs.output_wav.c_str(), "w");
-            fseek(output, header_size + track_info_size, SEEK_SET);
 
             size_t pos_mu = config_commands[i].command_.find("mute");
             size_t pos_mi = config_commands[i].command_.find("mix");
@@ -73,37 +90,14 @@ int main(int argc, char **argv) {
             if (pos_mu != string::npos){
                 command::parse_command(config_commands[i]);
 
-
-                //Read the data
-                uint16_t bytesPerSample = orig_wav_head.bitsPerSample / 8;      //Number     of bytes per sample
-                uint64_t numSamples = orig_wav_head.ChunkSize / bytesPerSample; //How many samples are in the wav file?
-
-                static const uint32_t BUFFER_SIZE = 88200;
-                auto* buffer = new int8_t[BUFFER_SIZE];
-                int sec_cnt = 0;
-                while ((bytes_read = fread(buffer, sizeof buffer[0], BUFFER_SIZE / (sizeof buffer[0]), orig_wav)) > 0)
-                {
-                    /** DO SOMETHING WITH THE WAVE DATA HERE **/
-                    if (sec_cnt >= config_commands[i].start && sec_cnt < config_commands[i].end){
-                        fwrite(fill, sizeof fill[0], FILL_SIZE / sizeof(fill[0]), output);
-                    }else {
-                        fwrite(buffer, sizeof buffer[0], BUFFER_SIZE / sizeof(buffer[0]), output);
-                    }
-                    cout << "Read " << bytes_read << " bytes." << endl;
-                    sec_cnt++;
-                }
-                delete [] buffer;
-                buffer = nullptr;
-                filelength = getFileSize(orig_wav);
-
-                //orig_wav = output;
-                fclose(output);
-
-            }else if (pos_mi != string::npos){
-
-                command::parse_command(config_commands[i]);
+                foo(config_commands[i].start, config_commands[i].end, orig_wav, output, offset);
 
             }
+//            else if (pos_mi != string::npos){
+//
+//                command::parse_command(config_commands[i]);
+//
+//            }
 
         }
         fclose(orig_wav);

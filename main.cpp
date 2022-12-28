@@ -117,12 +117,13 @@ int main(int argc, char **argv) {
     ifs.close();
 
     if (cnt_comm != -1) {
-        wav_hdr orig_wav_head;
+
         FILE *orig_wav = fopen(prs.input_files[0].c_str(), "rb");
 
 
         sound orig_wav_header = get_header(orig_wav);
-        orig_wav_head = orig_wav_header
+        wav_hdr orig_wav_head = orig_wav_header.header;
+        int track_data_size = orig_wav_header.track_data_size;
 
         fs::copy("./" + prs.input_files[0], "./" + prs.output_wav, fs::copy_options::update_existing);
         FILE *output = fopen(prs.output_wav.c_str(), "rb+");
@@ -146,8 +147,8 @@ int main(int argc, char **argv) {
                 cout << prs.input_files[config_commands[i].num_file].c_str() << endl;
                 FILE *input2 = fopen(prs.input_files[0].c_str(), "rb");
                 wav_hdr input_head;
-                long long offset2 = get_header(&input_head, input2);
-                mix(output, offset, offset2, input2, config_commands[i].start);
+//                long long offset2 = get_header(&input_head, input2);
+//                mix(output, offset, offset2, input2, config_commands[i].start);
 
             }
 

@@ -121,9 +121,9 @@ void command::parse_command(command & c) {
         while (c.command_[i]){
             if (c.command_[i] != ' '){
                 if (flag) {
-                    tmp_s += c.command_[i];
-                } else{
                     tmp_n += c.command_[i];
+                } else{
+                    tmp_s += c.command_[i];
                 }
             }else{
                 flag = false;
